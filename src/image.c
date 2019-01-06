@@ -85,6 +85,7 @@ int morph_images_parallel(const Image image1, const Image image2, const double a
     assert_equal_size(&image1, &image2);
     const double r_alpha = (1.0 - alpha);
 
+    const int root = 0;
     int world_size, rank;
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
@@ -102,23 +103,20 @@ int morph_images_parallel(const Image image1, const Image image2, const double a
     }
     counts[world] = img_size - (world * size);
     displs[world] = world * size;
-
-    if (rank == world_size - 1) {
-        size = counts[world];
-    }
+    size = counts[rank];
 
     unsigned char* recv1 = (unsigned char*) malloc(size);
-    MPI_Scatterv(image1.data, counts, displs, MPI_UINT8_T, recv1, size, MPI_UINT8_T, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(image1.data, counts, displs, MPI_UINT8_T, recv1, size, MPI_UINT8_T, root, MPI_COMM_WORLD);
 
     unsigned char* recv2 = (unsigned char*) malloc(size);
-    MPI_Scatterv(image2.data, counts, displs, MPI_UINT8_T, recv2, size, MPI_UINT8_T, 0, MPI_COMM_WORLD);
+    MPI_Scatterv(image2.data, counts, displs, MPI_UINT8_T, recv2, size, MPI_UINT8_T, root, MPI_COMM_WORLD);
 
     unsigned char* res = (unsigned char*) malloc(size);
     for (int i = 0; i < size; ++i) {
         res[i] = (recv1[i] * alpha) + (recv2[i] * r_alpha);
     }
 
-    MPI_Gatherv(res, size, MPI_UINT8_T, result->data, counts, displs, MPI_UINT8_T, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(res, size, MPI_UINT8_T, result->data, counts, displs, MPI_UINT8_T, root, MPI_COMM_WORLD);
 
     MPI_Finalize();
 

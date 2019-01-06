@@ -6,7 +6,7 @@
 #include "image.h"
 
 // Example usage:
-//      ./morph data/bush.png data/schwarzenegger.png 0.5 data/morphed.png
+//      mpirun -n 4 morph data/bush.png data/schwarzenegger.png data/morphed.png
 
 const char* DEFAULT_OUTPUT_PATH = "./morphed.png";
 
@@ -24,13 +24,13 @@ int main(int argc, char** argv) {
     }
 
     Image* morphed = new_image(image1.width, image1.height, image1.channels);
-    double alpha = argc >= 4 ? strtod(argv[3], NULL) : IMAGES_DEFAULT_ALPHA;
+    double alpha = argc >= 5 ? strtod(argv[4], NULL) : IMAGES_DEFAULT_ALPHA;
     if (!morph_images_parallel(image1, image2, alpha, morphed)) {
         printf("Error morphing images.\n");
         exit(-1);
     }
 
-    const char* output_filepath = argc >= 5 ? argv[4] : DEFAULT_OUTPUT_PATH;
+    const char* output_filepath = argc >= 4 ? argv[3] : DEFAULT_OUTPUT_PATH;
     if (!save_image(*morphed, output_filepath)) {
         printf("Error saving morphed image.\n");
         exit(-1);
