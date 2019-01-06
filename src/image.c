@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <unistd.h>
 
 #include "image.h"
 
@@ -62,7 +63,7 @@ int image_size(const Image image) {
 }
 
 int save_image(const Image image, const char* filepath) {
-    return stbi_write_bmp(filepath, image.width, image.height, image.channels, image.data);
+    return stbi_write_png(filepath, image.width, image.height, image.channels, image.data, 0);
 }
 
 void assert_equal_size(const Image* image1, const Image* image2) {
