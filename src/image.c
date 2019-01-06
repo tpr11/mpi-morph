@@ -10,6 +10,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize.h"
 
+const int ROOT = 0;
 const double IMAGES_DEFAULT_ALPHA = 0.5;
 
 Image* new_image(int width, int height, int channels) {
@@ -17,7 +18,7 @@ Image* new_image(int width, int height, int channels) {
     image->width = width;
     image->height = height;
     image->channels = channels;
-    image->data = (unsigned char*) malloc(image_size(*image));
+    image->data = (unsigned char*) calloc(image_size(*image), sizeof(unsigned char));
     return image;
 }
 
@@ -66,35 +67,36 @@ int save_image(const Image image, const char* filepath) {
     return stbi_write_png(filepath, image.width, image.height, image.channels, image.data, 0);
 }
 
-void assert_equal_size(const Image* image1, const Image* image2) {
-    assert(image1->width == image2->width);
-    assert(image1->height == image2->height);
-    assert(image1->channels == image2->channels);  
+void assert_equal_size(const Image image1, const Image image2) {
+    assert(image1.width == image2.width);
+    assert(image1.height == image2.height);
+    assert(image1.channels == image2.channels);  
 }
 
-int morph_images(const Image image1, const Image image2, const double alpha, Image* result) {
-    assert_equal_size(&image1, &image2);
-    const double r_alpha = (1.0 - alpha);
-    for (int i = 0; i < image_size(*result); ++i) {
-        result->data[i] = (image1.data[i] * alpha) + (image2.data[i] * r_alpha);
-    }
-    return 1;
+int imgcmp (Image image1, Image image2) {
+    assert_equal_size(image1, image2);
+    return memcmp(image1.data, image2.data, image_size(image1));
 }
 
-int morph_images_parallel(const Image image1, const Image image2, const double alpha, Image* result) {
+int morph_images_parallel(const double alpha, const Image* image1, const Image* image2, Image* result) {
     
-    assert_equal_size(&image1, &image2);
-    const double r_alpha = (1.0 - alpha);
-
-    const int root = 0;
     int world_size, rank;
-    MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    const int img_size = image_size(image1);
-    int size = image_size(image1) / world_size;    
+    unsigned char* image1_data = (image1 != NULL) ? image1->data : NULL;
+    unsigned char* image2_data = (image2 != NULL) ? image2->data : NULL;
+    unsigned char* result_data = (result != NULL) ? result->data : NULL;
 
+    const double r_alpha = (1.0 - alpha);
+
+    int img_size = 0;
+    if (rank == ROOT) {
+        img_size = image_size(*image1);
+    }
+    MPI_Bcast(&img_size, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
+
+    int size = img_size / world_size;    
     int* counts = (int*) malloc(world_size * sizeof(int));
     int* displs = (int*) malloc(world_size * sizeof(int));
     int world = 0;
@@ -107,19 +109,17 @@ int morph_images_parallel(const Image image1, const Image image2, const double a
     size = counts[rank];
 
     unsigned char* recv1 = (unsigned char*) malloc(size);
-    MPI_Scatterv(image1.data, counts, displs, MPI_UINT8_T, recv1, size, MPI_UINT8_T, root, MPI_COMM_WORLD);
+    MPI_Scatterv(image1_data, counts, displs, MPI_UINT8_T, recv1, size, MPI_UINT8_T, ROOT, MPI_COMM_WORLD);
 
     unsigned char* recv2 = (unsigned char*) malloc(size);
-    MPI_Scatterv(image2.data, counts, displs, MPI_UINT8_T, recv2, size, MPI_UINT8_T, root, MPI_COMM_WORLD);
+    MPI_Scatterv(image2_data, counts, displs, MPI_UINT8_T, recv2, size, MPI_UINT8_T, ROOT, MPI_COMM_WORLD);
 
     unsigned char* res = (unsigned char*) malloc(size);
     for (int i = 0; i < size; ++i) {
         res[i] = (recv1[i] * alpha) + (recv2[i] * r_alpha);
     }
 
-    MPI_Gatherv(res, size, MPI_UINT8_T, result->data, counts, displs, MPI_UINT8_T, root, MPI_COMM_WORLD);
-
-    MPI_Finalize();
+    MPI_Gatherv(res, size, MPI_UINT8_T, result_data, counts, displs, MPI_UINT8_T, ROOT, MPI_COMM_WORLD);
 
     free(recv1);
     free(recv2);
