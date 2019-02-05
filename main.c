@@ -6,7 +6,7 @@
 #include "image.h"
 
 // Example usage:
-//      mpirun -n 4 morph data/bush.png data/schwarzenegger.png data/morphed.png
+//      mpirun -n 4 morph data/bush.png data/schwarzenegger.png data/morphed.png 0.5
 
 const char* DEFAULT_OUTPUT_PATH = "./morphed.png";
 

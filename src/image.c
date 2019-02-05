@@ -26,11 +26,11 @@ int load_image(const char* filepath, Image* image) {
     int n = 3;
     unsigned char *i = stbi_load(filepath, &image->width, &image->height, &n, 0);
     if (!i) {
-        return 0;
+        return 1;
     }
     image->data = i;
     image->channels = n;
-    return 1;
+    return 0;
 }
 
 int resize_image(Image* image, int new_width, int new_height) {
@@ -46,17 +46,17 @@ int resize_image(Image* image, int new_width, int new_height) {
 }
 
 int load_resized(const char* filename1, const char* filename2, Image* image1, Image* image2) {
-    if (!load_image(filename1, image1)) {
-        return 0;
+    if (load_image(filename1, image1)) {
+        return 1;
     }
-    if (!load_image(filename2, image2)) {
-        return 0;
+    if (load_image(filename2, image2)) {
+        return 1;
     }
     int lowest_width = image1->width < image2->width ? image1->width : image2->width;
     int lowest_height = image1->height < image2->height ? image1->height : image2->height;
     resize_image(image1, lowest_width, lowest_height);
     resize_image(image2, lowest_width, lowest_height);
-    return 1;
+    return 0;
 }
 
 int image_size(const Image image) {
@@ -127,7 +127,7 @@ int morph_images_parallel(const double alpha, const Image* image1, const Image* 
     free(counts);
     free(displs);
 
-    return 1;
+    return 0;
 }
 
 void free_image(Image* image) {
