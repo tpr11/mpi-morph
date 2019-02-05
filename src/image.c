@@ -35,8 +35,8 @@ int load_image(const char* filepath, Image* image) {
 
 int resize_image(Image* image, int new_width, int new_height) {
     unsigned char* new_data = (unsigned char*) malloc(new_width * new_height * image->channels);
-    int return_code = stbir_resize_uint8(image->data, image->width, image->height, 0, 
-                                         new_data, new_width, new_height, 0, image->channels);
+    int return_code = !stbir_resize_uint8(image->data, image->width, image->height, 0, 
+                                          new_data, new_width, new_height, 0, image->channels);
     unsigned char* aux = image->data;
     image->data = new_data;
     image->width = new_width;
@@ -64,7 +64,7 @@ int image_size(const Image image) {
 }
 
 int save_image(const Image image, const char* filepath) {
-    return stbi_write_png(filepath, image.width, image.height, image.channels, image.data, 0);
+    return !stbi_write_png(filepath, image.width, image.height, image.channels, image.data, 0);
 }
 
 void assert_equal_size(const Image image1, const Image image2) {
